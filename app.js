@@ -54,50 +54,71 @@ function prettyISK(x){
 }
 
 // ====== Battleship discovery (FIX usando /search) ======
+// ====== Battleship discovery (robusto: categoría 6 + concurrencia + cache) ======
 async function loadBattleships(){
+  const btn = document.querySelector('#calcBtn');
+  btn.disabled = true;
   sel.innerHTML = `<option>Loading battleships…</option>`;
 
-  // Buscar el grupo "Battleship" con /search
-  const searchQS = new URLSearchParams({
-    categories: 'group',
-    search: 'battleship',
-    strict: 'true',
-    language: 'en-us',
-    datasource: 'tranquility',
-  }).toString();
+  // 1) Usa cache del groupId si ya lo descubrimos antes
+  let bsGroupId = localStorage.getItem('bsGroupId');
 
-  const r = await fetch(`${API}/esi/search/?${searchQS}`);
-  if (!r.ok) throw new Error(`ESI search failed: ${r.status}`);
-  const data = await r.json();
+  // 2) Si no está cacheado, descubre el grupo recorriendo category 6
+  if (!bsGroupId) {
+    const cat = await esi('/universe/categories/6/');     // Ships
+    const groups = cat.groups || [];
+    let found = null;
+    let i = 0;
+    const CONC = 6; // concurrencia
 
-  const groupIds = data?.group || [];
-  if (!groupIds.length) throw new Error('Battleship group not found via ESI search');
-  const bsGroupId = groupIds[0];
+    async function worker() {
+      while (!found && i < groups.length) {
+        const gid = groups[i++];
+        try {
+          const g = await esi(`/universe/groups/${gid}/`);
+          if ((g?.name || '').toLowerCase() === 'battleship') {
+            found = gid;
+            break;
+          }
+        } catch { /* ignore */ }
+      }
+    }
+    // corre varios workers en paralelo
+    await Promise.all(Array.from({ length: CONC }, worker));
 
-  // Ahora traemos ese grupo
+    if (!found) throw new Error('Battleship group not found under category 6');
+    bsGroupId = found;
+    localStorage.setItem('bsGroupId', String(bsGroupId));
+  }
+
+  // 3) Carga los tipos del grupo encontrado
   const g = await esi(`/universe/groups/${bsGroupId}/`);
   const ids = (g?.types || []).slice();
 
-  // Resolver nombres en batches
-  const batch = (arr, n=20)=>{ const out=[]; for(let i=0;i<arr.length;i+=n){ out.push(arr.slice(i,i+n)); } return out; };
-  const parts = batch(ids, 20);
+  // 4) Resuelve nombres en paralelo (concurrencia limitada)
   const items = [];
-  for (const chunk of parts){
-    const proms = chunk.map(async id=>{
+  let j = 0;
+  const CONC_TYPES = 8;
+
+  async function typeWorker() {
+    while (j < ids.length) {
+      const id = ids[j++]; // acceso secuencial
       try {
         const t = await esi(`/universe/types/${id}/`);
-        return t && t.published !== false ? {id, name:t.name} : null;
-      } catch { return null; }
-    });
-    const got = await Promise.all(proms);
-    for (const x of got) if (x) items.push(x);
+        if (t && t.published !== false) items.push({ id, name: t.name });
+      } catch { /* ignore */ }
+    }
   }
+  await Promise.all(Array.from({ length: CONC_TYPES }, typeWorker));
 
-  items.sort((a,b)=> a.name.localeCompare(b.name));
+  items.sort((a, b) => a.name.localeCompare(b.name));
   sel.innerHTML =
     `<option value="">— Select a battleship —</option>` +
-    items.map(it=>`<option value="${it.id}">${it.name} (ID ${it.id})</option>`).join('');
+    items.map(it => `<option value="${it.id}">${it.name} (ID ${it.id})</option>`).join('');
+
+  btn.disabled = false;
 }
+
 
 // ====== Main calculator ======
 async function calculate(){
@@ -143,3 +164,4 @@ async function calculate(){
 // ====== Init ======
 $('#calcBtn').addEventListener('click', calculate);
 loadBattleships().catch(e=>renderError(e.message||String(e)));
+
