@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EVE Battleship Material Calculator</title>
+  <style>
+    :root{--bg:#0b0e12;--panel:#131821;--muted:#7d8ca1;--text:#e7eefc;--acc:#5cd4ff;--bad:#ff5c7a}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    header{padding:18px 20px;border-bottom:1px solid #1e2633;background:linear-gradient(180deg,#0e141d,#0b0e12)}
+    h1{margin:0;font-size:18px;letter-spacing:.2px}
+    h1 span{color:var(--acc)}
+    main{max-width:1100px;margin:0 auto;padding:22px}
+    .grid{display:grid;grid-template-columns:1.1fr 1.6fr;gap:18px}
+    .card{background:var(--panel);border:1px solid #1f2735;border-radius:14px;box-shadow:0 8px 26px rgba(0,0,0,.25)}
+    .card h2{font-size:14px;margin:0 0 10px;color:#cfe2ff}
+    .card .pad{padding:16px}
+    label{display:block;margin:12px 0 6px;color:#b7c6df}
+    select,input,button{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3447;background:#0f141d;color:var(--text)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    button{cursor:pointer;background:linear-gradient(180deg,#1e89a8,#156b86);border-color:#1a7f9e}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .muted{color:var(--muted)}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px 10px;border-bottom:1px solid #233047}
+    th{text-align:left;color:#cfe2ff}
+    code{background:#0e1420;border:1px solid #22314b;border-radius:6px;padding:2px 6px}
+    .pill{display:inline-block;padding:2px 8px;border:1px solid #2b364b;border-radius:24px;font-size:12px;color:#9fb3d1;margin-left:6px}
+    details{margin-top:8px}
+    a{color:#7fd9ff}
+    .error{border-left:4px solid var(--bad);padding:10px 12px;background:#1a0f12;color:#ffd2db;border-radius:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙️ EVE Battleship Material Calculator <span>(EVE Ref + ESI)</span></h1>
+  </header>
+  <main>
+    <div class="grid">
+      <section class="card">
+        <div class="pad">
+          <h2>1) Pick a battleship (or paste a Type ID / EVE Ref URL)</h2>
+          <label>Common battleships (auto-fetched from ESI “Battleship” group)</label>
+          <select id="shipSelect"></select>
+          <div class="row">
+            <div>
+              <label>Type ID or EVE Ref URL</label>
+              <input id="manualId" placeholder="e.g. 22440 or https://everef.net/type/22440" />
+            </div>
+            <div>
+              <label>Runs</label>
+              <input id="runs" type="number" min="1" value="1" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>ME (Material Efficiency)</label>
+              <input id="me" type="number" min="0" max="10" value="0" />
+            </div>
+            <div>
+              <label>TE (Time Efficiency)</label>
+              <input id="te" type="number" min="0" max="20" value="0" />
+            </div>
+          </div>
+          <button id="calcBtn">Calculate materials</button>
+          <p class="muted" style="margin-top:10px">
+            Data sources: 
+            <a href="https://docs.everef.net/api/industry-cost.html" target="_blank" rel="noreferrer">EVE Ref Industry Cost</a> • 
+            <a href="https://wiki.eveuniversity.org/EVE_Swagger_Interface" target="_blank" rel="noreferrer">ESI universe</a>
+          </p>
+        </div>
+      </section>
+      <section class="card">
+        <div class="pad">
+          <h2>2) Materials</h2>
+          <div id="out"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:18px">
+      <div class="pad">
+        <h2>Notes</h2>
+        <ul class="muted">
+          <li>Ships list is discovered live via ESI “Battleship” group.</li>
+          <li>Material math comes from your Worker proxy to Everef.</li>
+          <li>Material names are resolved via ESI /universe/types/{type_id}.</li>
+        </ul>
+        <details>
+          <summary>Show raw JSON (last response)</summary>
+          <pre id="raw" style="white-space:pre-wrap"></pre>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <!-- Tu lógica separada en app.js -->
+  <script src="app.js" defer></script>
+</body>
+</html>
